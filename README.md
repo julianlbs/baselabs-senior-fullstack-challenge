@@ -88,6 +88,40 @@ No external services, API keys, authentication providers, cloud accounts, paid c
 
 Do not build authentication or user management, payments, invoicing, taxes, accounting, email/SMS, external API integrations, cloud infrastructure, Redis, Datadog, CI/CD, Trigger.dev workflows, microservices, or event sourcing. Edit Reservation is bonus-only, and automated tests are not required.
 
+## Assumptions
+
+- Times are UTC instants. The list formats with `timeZone: "UTC"`. The create form labels start and end as UTC, and the server appends `Z` when a value has no offset, so `09:00` on the form is `09:00` UTC on the list.
+- A reservation is one location and one interval. Each equipment type appears once, and that equipment must belong to the location.
+- A draft may request more than is currently free. Only `CONFIRMED` reservations consume inventory.
+- There is no signed-in user. Anyone who can open the app can create a reservation.
+- Notes stay on the existing note editor. Create does not collect a note.
+- The database is local SQLite (`dev.db`). `DATABASE_URL` may override the path.
+
+## Technical decisions
+
+- Availability lives in `getAvailableQuantity`. Overlap is half-open `[start, end)`: `startAt < requestedEnd` and `endAt > requestedStart`, confirmed rows only, scoped by location and equipment. Adjacent intervals such as `09:00–12:00` and `12:00–15:00` do not conflict.
+- Create runs in one `prisma.$transaction`. A confirmed save calls `getAvailableQuantity` with the transaction client before `reservation.create` writes the `ReservationItem` rows. A `DomainError` aborts the transaction, so the reservation is not stored.
+- Drafts skip that availability rejection. The server still checks that the location exists and that each equipment row belongs to it.
+- `POST /api/reservations` validates the body with the shared Zod schema and maps `DomainError` to `{ error, code }`.
+- The create page is a server component that loads locations and equipment. The form is a client component using React Hook Form and that same schema.
+- The schema was already relational (`Reservation` and `ReservationItem`). Create did not add a migration.
+- After a successful create, the form calls `router.refresh()` and returns to the list. The list page is `force-dynamic`, so the next load reads the new row. Availability itself is not cached.
+
+## Trade-offs / incomplete work
+
+- Edit Reservation, the optional bonus, is not implemented. There is no update route for a reservation’s location, interval, items, or status. The note editor is unchanged.
+- The quantity field is capped between 1 and that equipment’s `totalQuantity`. The server still rejects a confirmed request above the remaining quantity for the selected period, which can be lower than the total. The form does not preview that remaining quantity; the server message after submit is the source of truth.
+- Conflict reporting stops at the first equipment line that does not fit.
+- Re-checking inside a SQLite transaction does not take a row lock. See Production considerations.
+- There is no automated test suite. Check the happy path and a confirmed overlap by hand.
+
+## Production considerations
+
+- Two confirms can both read remaining stock and then both insert. Prisma’s SQLite transaction is deferred: the availability read does not reserve the database, and the later write does not re-run that read. A failed check rolls back its own transaction, but it does not stop a second transaction that already observed the same remaining quantity. This app does not use row locks.
+- SQLite serializes writers on one database file. That is enough for this local app. Under higher traffic or more than one app instance, move to Postgres, lock the equipment row (or use serializable isolation) for the check-and-insert, and keep the same half-open rule.
+- `Reservation` is indexed on `(locationId, status, startAt, endAt)`, and `ReservationItem` is indexed on `equipmentId`. Overlap is still two range predicates. A much larger table would need the query plan checked and, if needed, a narrower lookup by location and equipment before the time comparison.
+- Do not cache `getAvailableQuantity` without invalidating it on every confirmed write. This app does not cache that read.
+
 ## Submission
 
 Follow the submission instructions in the assessment document you received.
