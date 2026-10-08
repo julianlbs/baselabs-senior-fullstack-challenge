@@ -12,12 +12,17 @@ interface AvailabilityCheckInput extends AvailabilityInput {
   requestedQuantity: number;
 }
 
-export async function getAvailableQuantity(input: AvailabilityInput): Promise<number> {
+type ReservationDb = typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+export async function getAvailableQuantity(
+  input: AvailabilityInput,
+  db: ReservationDb = prisma,
+): Promise<number> {
   if (input.endAt <= input.startAt) {
     throw new DomainError("End time must be after start time.", 400, "INVALID_INTERVAL");
   }
 
-  const equipment = await prisma.equipment.findFirst({
+  const equipment = await db.equipment.findFirst({
     where: { id: input.equipmentId, locationId: input.locationId },
     select: { totalQuantity: true },
   });
@@ -30,13 +35,13 @@ export async function getAvailableQuantity(input: AvailabilityInput): Promise<nu
     );
   }
 
-  // Availability behavior is part of the candidate challenge.
-  const reservations = await prisma.reservation.findMany({
+  // Half-open intervals [start, end): a booking that ends when another starts does not overlap.
+  const reservations = await db.reservation.findMany({
     where: {
       locationId: input.locationId,
       status: "CONFIRMED",
-      startAt: { lte: input.endAt },
-      endAt: { gte: input.startAt },
+      startAt: { lt: input.endAt },
+      endAt: { gt: input.startAt },
       items: { some: { equipmentId: input.equipmentId } },
     },
     select: {
