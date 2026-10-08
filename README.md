@@ -66,7 +66,7 @@ No automated tests are required. Focus on clear production-style code, sound bus
 - Requested quantity may not exceed the available quantity.
 - Availability is location-specific.
 - The server is authoritative and must re-check availability before confirming a reservation.
-- An unavailable confirmed request must return an actionable domain error, such as: `Only 2 Generators are available for the selected period.`
+- An unavailable confirmed request returns an actionable domain error that uses the stored equipment name. With the seed data that is `Only 2 Generators are available for the selected period.`
 
 ## Useful Commands
 
@@ -112,6 +112,7 @@ Do not build authentication or user management, payments, invoicing, taxes, acco
 - Edit Reservation, the optional bonus, is not implemented. There is no update route for a reservation’s location, interval, items, or status. The note editor is unchanged.
 - The quantity field is capped between 1 and that equipment’s `totalQuantity`. The server still rejects a confirmed request above the remaining quantity for the selected period, which can be lower than the total. The form does not preview that remaining quantity; the server message after submit is the source of truth.
 - Conflict reporting stops at the first equipment line that does not fit.
+- The message pluralizes the stored name when more than one unit is available. Seed equipment is singular (`Generator`), so the copy is `Only 2 Generators are available for the selected period.`
 - Re-checking inside a SQLite transaction does not take a row lock. See Production considerations.
 - There is no automated test suite. Check the happy path and a confirmed overlap by hand.
 

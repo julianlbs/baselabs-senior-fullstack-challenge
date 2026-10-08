@@ -3,6 +3,13 @@ import { prisma } from "@/lib/prisma";
 import type { CreateReservationInput } from "@/schemas/create-reservation";
 import { getAvailableQuantity } from "@/server/reservations/availability";
 
+function pluralEquipmentName(name: string): string {
+  if (name.endsWith("s") || name.endsWith("S")) {
+    return name;
+  }
+  return `${name}s`;
+}
+
 function parseUtcDateTimeLocal(value: string): Date {
   const withSeconds = value.length === 16 ? `${value}:00` : value;
   const iso = withSeconds.endsWith("Z") ? withSeconds : `${withSeconds}.000Z`;
@@ -59,9 +66,11 @@ export async function createReservation(input: CreateReservationInput) {
         );
 
         if (item.quantity > availableQuantity) {
+          const label =
+            availableQuantity === 1 ? equipmentName : pluralEquipmentName(equipmentName);
           const verb = availableQuantity === 1 ? "is" : "are";
           throw new DomainError(
-            `Only ${availableQuantity} ${equipmentName} ${verb} available for the selected period.`,
+            `Only ${availableQuantity} ${label} ${verb} available for the selected period.`,
             409,
             "AVAILABILITY_CONFLICT",
           );
