@@ -6,13 +6,15 @@ interface AvailabilityInput {
   equipmentId: string;
   startAt: Date;
   endAt: Date;
+  /** Confirmed items on this reservation are left out of the sum. Omit it for create. */
+  excludeReservationId?: string;
 }
 
 interface AvailabilityCheckInput extends AvailabilityInput {
   requestedQuantity: number;
 }
 
-type ReservationDb = typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+export type ReservationDb = typeof prisma | Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 export async function getAvailableQuantity(
   input: AvailabilityInput,
@@ -42,6 +44,7 @@ export async function getAvailableQuantity(
       status: "CONFIRMED",
       startAt: { lt: input.endAt },
       endAt: { gt: input.startAt },
+      ...(input.excludeReservationId ? { id: { not: input.excludeReservationId } } : {}),
       items: { some: { equipmentId: input.equipmentId } },
     },
     select: {

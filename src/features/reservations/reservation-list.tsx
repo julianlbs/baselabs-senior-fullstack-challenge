@@ -1,5 +1,6 @@
 "use client";
 
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import {
   Box,
@@ -38,6 +39,10 @@ function formatDate(value: string) {
 
 function formatEquipment(reservation: ReservationListItem) {
   return reservation.equipment.map((item) => `${item.quantity}x ${item.name}`).join(", ");
+}
+
+function editLabel(reservation: ReservationListItem) {
+  return `Edit reservation for ${reservation.locationName} starting ${formatDate(reservation.startAt)}`;
 }
 
 function StatusChip({ status }: { status: ReservationListItem["status"] }) {
@@ -83,14 +88,24 @@ export function ReservationList({ reservations }: { reservations: ReservationLis
                   </Typography>
                 </TableCell>
                 <TableCell align="right">
-                  <Tooltip title="Edit internal note">
-                    <IconButton
-                      aria-label={`Edit note for ${reservation.locationName} reservation starting ${formatDate(reservation.startAt)}`}
-                      onClick={() => setEditing(reservation)}
-                    >
-                      <EditNoteIcon />
-                    </IconButton>
-                  </Tooltip>
+                  <Stack direction="row" spacing={0.5} sx={{ justifyContent: "flex-end" }}>
+                    <Tooltip title="Edit reservation">
+                      <IconButton
+                        aria-label={editLabel(reservation)}
+                        href={`/reservations/${reservation.id}/edit`}
+                      >
+                        <EditOutlinedIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Edit internal note">
+                      <IconButton
+                        aria-label={`Edit note for ${reservation.locationName} reservation starting ${formatDate(reservation.startAt)}`}
+                        onClick={() => setEditing(reservation)}
+                      >
+                        <EditNoteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
                 </TableCell>
               </TableRow>
             ))}
@@ -120,14 +135,23 @@ export function ReservationList({ reservations }: { reservations: ReservationLis
                   <Typography variant="caption" color="text.secondary">Internal note</Typography>
                   <Typography>{reservation.note ?? "No note"}</Typography>
                 </Box>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditNoteIcon />}
-                  onClick={() => setEditing(reservation)}
-                  sx={{ alignSelf: "flex-start" }}
-                >
-                  Edit note
-                </Button>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ alignItems: "flex-start" }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditOutlinedIcon />}
+                    href={`/reservations/${reservation.id}/edit`}
+                    aria-label={editLabel(reservation)}
+                  >
+                    Edit reservation
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditNoteIcon />}
+                    onClick={() => setEditing(reservation)}
+                  >
+                    Edit note
+                  </Button>
+                </Stack>
               </Stack>
             </CardContent>
           </Card>

@@ -59,7 +59,15 @@ function itemsErrorMessage(errors: FieldErrors<CreateReservationInput>): string 
   return undefined;
 }
 
-export function CreateReservationForm({ locations }: { locations: LocationOption[] }) {
+export function CreateReservationForm({
+  locations,
+  reservationId,
+  initialValues,
+}: {
+  locations: LocationOption[];
+  reservationId?: string;
+  initialValues?: CreateReservationInput;
+}) {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const {
@@ -71,7 +79,7 @@ export function CreateReservationForm({ locations }: { locations: LocationOption
     formState: { errors, isSubmitting, isSubmitted },
   } = useForm<CreateReservationInput>({
     resolver: zodResolver(createReservationSchema),
-    defaultValues: {
+    defaultValues: initialValues ?? {
       locationId: "",
       startAt: "",
       endAt: "",
@@ -117,11 +125,14 @@ export function CreateReservationForm({ locations }: { locations: LocationOption
     setServerError(null);
 
     try {
-      const response = await fetch("/api/reservations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
+      const response = await fetch(
+        reservationId ? `/api/reservations/${encodeURIComponent(reservationId)}` : "/api/reservations",
+        {
+          method: reservationId ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        },
+      );
 
       let body: ApiErrorBody = {};
       try {

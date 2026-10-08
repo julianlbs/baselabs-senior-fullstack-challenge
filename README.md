@@ -109,7 +109,7 @@ Do not build authentication or user management, payments, invoicing, taxes, acco
 
 ## Trade-offs / incomplete work
 
-- Edit Reservation, the optional bonus, is not implemented. There is no update route for a reservation’s location, interval, items, or status. The note editor is unchanged.
+- Edit Reservation is implemented. `PUT /api/reservations/[id]` replaces the location, interval, status, and equipment lines in one transaction. When the saved status is confirmed, availability is re-checked inside that transaction, and the reservation being edited is excluded from its own availability sum so it does not conflict with itself. Draft updates still do not consume stock. The note editor is unchanged.
 - The quantity field is capped between 1 and that equipment’s `totalQuantity`. The server still rejects a confirmed request above the remaining quantity for the selected period, which can be lower than the total. The form does not preview that remaining quantity; the server message after submit is the source of truth.
 - Conflict reporting stops at the first equipment line that does not fit.
 - The message pluralizes the stored name when more than one unit is available. Seed equipment is singular (`Generator`), so the copy is `Only 2 Generators are available for the selected period.`
