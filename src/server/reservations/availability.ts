@@ -17,14 +17,14 @@ type ReservationDb = typeof prisma | Parameters<Parameters<typeof prisma.$transa
 export async function getAvailableQuantity(
   input: AvailabilityInput,
   db: ReservationDb = prisma,
-): Promise<number> {
+): Promise<{ availableQuantity: number; equipmentName: string }> {
   if (input.endAt <= input.startAt) {
     throw new DomainError("End time must be after start time.", 400, "INVALID_INTERVAL");
   }
 
   const equipment = await db.equipment.findFirst({
     where: { id: input.equipmentId, locationId: input.locationId },
-    select: { totalQuantity: true },
+    select: { totalQuantity: true, name: true },
   });
 
   if (!equipment) {
@@ -57,7 +57,10 @@ export async function getAvailableQuantity(
     0,
   );
 
-  return Math.max(0, equipment.totalQuantity - reservedQuantity);
+  return {
+    availableQuantity: Math.max(0, equipment.totalQuantity - reservedQuantity),
+    equipmentName: equipment.name,
+  };
 }
 
 export async function checkAvailability(
@@ -67,7 +70,7 @@ export async function checkAvailability(
     throw new DomainError("Quantity must be a positive whole number.", 400, "INVALID_QUANTITY");
   }
 
-  const availableQuantity = await getAvailableQuantity(input);
+  const { availableQuantity } = await getAvailableQuantity(input);
   return {
     available: input.requestedQuantity <= availableQuantity,
     availableQuantity,
